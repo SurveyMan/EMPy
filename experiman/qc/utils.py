@@ -66,3 +66,8 @@ class Graph(object):
     def __init__(self, nodes, matrix):
         self.nodes = nodes
         self.matrix = matrix
+
+    def get(self, node_name):
+        for node in self.nodes:
+            if node.name == node_name:
+                return node
