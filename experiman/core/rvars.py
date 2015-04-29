@@ -1,11 +1,11 @@
+import numpy
+import scipy.stats as stats
 import warnings
 
 __ratio__ = "ratio"
 __interval__ = "interval"
 __ordinal__ = "ordinal"
 __nominal__ = "nominal"
-
-__measurement_levels__ = [__ratio__, __interval__, __ordinal__, __nominal__]
 
 class RVar(object):
     """Random variables are the atoms in experiman"""
@@ -32,7 +32,7 @@ class RVar(object):
         self.name = name
         self.obs = obs
         if measurement_level:
-            assert measurement_level in __measurement_levels__
+            assert issubclass(measurement_level, Lattice)
             self.measurement_level = measurement_level
         else:
             self.measurement_level = self._infer_measurement_level()
@@ -46,6 +46,9 @@ class RVar(object):
         if self.obs:
             if isinstance(self.obs[0], Lattice):
                 pass
+
+    def _incremental_independence(self):
+        pass
 
     def iid_observes(self, observation):
         """A random variable is a function from some domain of interest to the reals. Observations are also random
@@ -63,32 +66,84 @@ class RVar(object):
         self.obs.append(rvar_i)
         return rvar_i
 
+    def independence_test(self, other):
+        measurement_level = min(self.measurement_level, other.measurement_level)
+        return measurement_level.independence_test(measurement_level.convert(self, other))
+
+    def set_size(self):
+        if self.obs:
+            assert isinstance(self.obs[0], Lattice)
+            return len(self.obs[0].poset[0])
+
 
 class Lattice(object):
     """Lattices are used to convey type information."""
 
-    def __init__(self, bot, top, poset=[]):
+    def __init__(self, bot, top, poset=[], order=1):
         self.bot = bot
         self.top = top
         self.poset = poset
+        self.order = order
+
+    def __cmp__(self, other):
+        return self.order.__cmp__(other)
 
 
 class Nominal(Lattice):
 
     def __init__(self, poset):
-        super(Nominal, self).__init__(None, None, poset)
+        super(Nominal, self).__init__(None, None, poset, 1)
+        self.name = __nominal__
+
+    @staticmethod
+    def independence_test(contingency_table):
+        return stats.chi2_contingency(contingency_table, correction=True)
+
+    @staticmethod
+    def convert(self, other, partition=None):
+        assert len(self.obs) == len(other.obs)
+        r = len(self.set_size())
+        if other.measurement_level == __nominal__ or other.measurement_level == __ordinal__:
+            c = len(other.poset)
+            table = numpy.matrix([[0 for _ in range(c)] for _ in range(r)])
+            for i in range(r):
+                j = self.poset.index(self.obs[i].obs)
+                k = other.poset.index(other.obs[i].obs)
+                table[j, k] += 1
+            return table
+        else:
+            partitions = partition(other.obs)
+            c = len(partitions)
+            table = numpy.matrix([[0 for _ in range(c)] for _ in range(r)])
+            for i in range(r):
+                j = self.poset.index(self.obs[i].obs)
+                val = other.obs[i].obs
+                for (l, (lower, upper)) in enumerate(partitions):
+                    if lower <= val <= upper:
+                        k = l
+                table[j, k] += 1
+            return table
 
 
 class Ordinal(str, Lattice):
-    pass
+
+    def __init__(self, bot, top, poset):
+        Lattice.__init__(self, bot, top, poset, 2)
+        self.name = __ordinal__
+
+
+class Interval(float, Lattice):
+
+    def __init__(self, bot, top, poset):
+        Lattice.__init__(self, bot, top, poset, 3)
+        self.name = __interval__
 
 
 class Ratio(float, Lattice):
-    pass
+
+    def __init__(self, bot, top, poset):
+        Lattice.__init__(self, bot, top, poset, 4)
+        self.name = __ratio__
 
 
-class String(str, Nominal):
-
-    def __init__(self, mystring):
-        str.__init__(self, mystring)
-        Lattice.__init__(mystring)
+__measurement_levels__ = [Ratio, Interval, Ordinal, Nominal]

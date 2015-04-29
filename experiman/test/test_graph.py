@@ -81,13 +81,13 @@ class RVarsTest(unittest.TestCase):
             node_list.append(rvars.RVar(v))
         g = utils.make_graph(node_list)
         dead = g.get("dead")
-        dead.measurement_level = "ratio"
+        dead.measurement_level = rvars.Ratio
         age = g.get("age")
-        age.measurement_level = "ordinal"
+        age.measurement_level = rvars.Ordinal
         pop = g.get("pop")
-        pop.measurement_level = "ratio"
+        pop.measurement_level = rvars.Ratio
         smoke = g.get("smoke")
-        smoke.measurement_level = "nominal"
+        smoke.measurement_level = rvars.Nominal
 
         class Dead(rvars.Ratio):
 
@@ -124,4 +124,4 @@ class RVarsTest(unittest.TestCase):
             pop.iid_observes(Pop(p))
             dead.iid_observes(Dead(d))
 
-        # ['dead', 'age', 'pop', 'smoke', 'row']
+        smoke.independence_test(smoke)

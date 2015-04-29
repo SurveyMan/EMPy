@@ -63,9 +63,10 @@ def get_in_edges(g, rv):
 
 class Graph(object):
 
-    def __init__(self, nodes, matrix):
+    def __init__(self, nodes, matrix, data=None):
         self.nodes = nodes
         self.matrix = matrix
+        self.data = data
 
     def get(self, node_name):
         for node in self.nodes:
